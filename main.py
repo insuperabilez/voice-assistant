@@ -4,8 +4,10 @@ import tts
 from fuzzywuzzy import fuzz
 import pandas as pd
 import re
+import numpy as np
 from extractor import NumberExtractor
 from number_to_text import num2text
+from openpyxl import load_workbook
 tts.play_sound('Голосовой ассистент готов.')
 df = pd.read_excel('table.xlsx')
 extractor = NumberExtractor()
@@ -88,8 +90,15 @@ def execute_cmd(cmd: str):
     try:
         n= int(cmd['number'])
     except:
-        n=0
-    tts.play_sound(f'Текущая команда: {config.VA_CMDS[cmd["cmd"]]}, по номенклатуре {i}, на {num2text(n)} единиц, месяц {m}')
+        n='not correct'
+    if (cmd['cmd']!='showplan' and cmd['cmd']!='showfact'):
+        if n!='not correct':
+            tts.play_sound(f'Текущая команда: {config.VA_CMDS[cmd["cmd"]]}, по номенклатуре {i}, на {num2text(n)} единиц, месяц {m}')
+        else:
+            tts.play_sound(f'Число единиц для изменения значения указано не верно.')
+            return 0
+    else:
+        tts.play_sound(f'Текущая команда: {config.VA_CMDS[cmd["cmd"]]}, по номенклатуре {i},  месяц {m}')
     plan = df[df['номенклатура'] == itemkey][cmd['month'] + "1"].iloc[0]
     fact = df[df['номенклатура'] == itemkey][cmd['month'] + "2"].iloc[0]
 
@@ -133,10 +142,14 @@ def execute_cmd(cmd: str):
         fact = n
         df.loc[df['номенклатура'] == itemkey, f'{m}1'] = fact
         print('done')
-    df.to_excel('output.xlsx')
+    config.savetable('table.xlsx','output.xlsx',df)
 
 
 
 
-# начать прослушивание команд
-stt.va_listen(va_respond)
+
+#stt.va_listen(va_respond)
+execute_cmd(filter_cmd('Алиса,озвучь план по номенклатуре оболочка девять точка десятьмиллиметров за август'))
+execute_cmd(filter_cmd('Алиса,установи план по номенклатуре оболочка девять точка десятьмиллиметров на двести пятьдесят девять единиц за август'))
+execute_cmd(filter_cmd('Алиса,озвучь план по номенклатуре оболочка девять точка десятьмиллиметров за август'))
+execute_cmd(filter_cmd('Алиса,установи план по номенклатуре оболочка девять точка десятьмиллиметров за август'))

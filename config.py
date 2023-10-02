@@ -1,6 +1,9 @@
-import pandas as pd
+﻿import pandas as pd
 import re
 from number_to_text import num2text
+import openpyxl
+from openpyxl import load_workbook
+import xlsxwriter
 def get_key_by_value(dictionary, value):
     keys = list(dictionary.keys())
     if value in dictionary.values():
@@ -48,3 +51,29 @@ VA_CMDS = {
     'setplan':('установи план'),
     'setfact':('установи факт')
 }
+
+from openpyxl.utils.dataframe import dataframe_to_rows
+def savetable(input,output,df):
+    source_book = openpyxl.load_workbook(input)
+    # Загрузка исходного листа
+    source_sheet = source_book['Лист1']
+    # Создание новой книги
+    target_book = openpyxl.Workbook()
+    # Создание нового листа
+    target_sheet = target_book.active
+    ws=target_book.active
+    # Перенос стилей ячеек
+    for r in dataframe_to_rows(df, index=False, header=True):
+        ws.append(r)
+    for row in source_sheet.iter_rows():
+        for cell in row:
+            target_cell = target_sheet[cell.coordinate]
+            target_cell.font = cell.font.copy()
+            target_cell.border = cell.border.copy()
+            target_cell.fill = cell.fill.copy()
+            target_cell.number_format = cell.number_format
+            target_cell.protection = cell.protection.copy()
+            target_cell.alignment = cell.alignment.copy()
+
+    # Сохранение изменений в целевой книге
+    target_book.save(output)
