@@ -148,4 +148,7 @@ def execute_cmd(cmd: str):
 
 
 
+<<<<<<< HEAD
 stt.va_listen(va_respond)
+=======
+
