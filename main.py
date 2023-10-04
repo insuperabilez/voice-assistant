@@ -149,6 +149,10 @@ def execute_cmd(cmd: str):
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 stt.va_listen(va_respond)
 =======
 
+=======
+stt.va_listen(va_respond)
+>>>>>>> 4874410 (fix)
