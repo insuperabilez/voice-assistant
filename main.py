@@ -9,13 +9,15 @@ from extractor import NumberExtractor
 from number_to_text import num2text
 from openpyxl import load_workbook
 tts.play_sound('Голосовой ассистент готов.')
-df = pd.read_excel('table.xlsx')
+df = pd.read_excel('table.xlsx',decimal=',')
+ints = ['Склад факт','Недогруз/Перегруз','План производства','Факт производства цеха','Сум. мес. потребность','Сум. мес. отгрузка']
+df[ints]=df[ints].astype(float)
 extractor = NumberExtractor()
 def va_respond(voice: str):
     print(voice)
     if voice.startswith(config.VA_ALIAS):
         cmd = filter_cmd(voice)
-        if cmd['item']!='' and cmd['cmd']!='None':
+        if cmd['company']!='' and cmd['cmd']!='None':
             execute_cmd(cmd)
         else:
             print('не распознано')
@@ -26,22 +28,11 @@ def filter_cmd(raw_voice: str):
         cmd = cmd.replace(x, "").strip()
     com = recognize_cmd(' '.join(cmd.split()[0:2]))
     cmd = ' '.join(cmd.split()[3:])
-    month = recognize_month(cmd.split()[-1])
-    cmd = cmd.replace(month,'').strip()
-    res = re.findall(r'на\s(.*?)\sединиц', cmd)
-    if res:
-        res=res[-1]
-    else:
-        res=''
-    cmd=cmd.replace(res,'').strip()
-    if month=='':
-        month='сентябрь'
     for x in config.VA_TBR:
         cmd = cmd.replace(x, "").strip()
-    item=recognize_item(cmd)
-    num = extractor.replace_groups(res)
-    print(f'command: {com}, item: {item}, month: {month} , num: {num}')
-    return {'cmd':com,'item':item,'month':month,'number':num}
+    company=recognize_company(cmd)
+    print(f'command: {com}, company: {company}')
+    return {'cmd':com,'company':company}
 
 def recognize_cmd(cmd: str):
     rc = {'cmd': '', 'percent': 0}
@@ -56,7 +47,7 @@ def recognize_cmd(cmd: str):
     else:
         return 'None'
 
-def recognize_item(cmd: str):
+def recognize_company(cmd: str):
     rc = {'item': '', 'percent': 0}
     for x in config.items:
         vrt = fuzz.ratio(cmd, x)
@@ -65,84 +56,50 @@ def recognize_item(cmd: str):
             rc['percent'] = vrt
     print(rc)
     if rc['percent']>50:
-        print(f'Распознана номенклатура {rc["item"]} с уверенностью {rc["percent"]} процентов.')
+        print(f'Распознана компания {rc["item"]} с уверенностью {rc["percent"]} процентов.')
         return rc['item']
     else:
         print('Номенклатура не распознана')
         return ''
-def recognize_month(cmd: str):
-    rc = {'month': '', 'percent': 0}
-    for x in config.months:
-        vrt = fuzz.ratio(cmd, x)
-        if vrt > rc['percent']:
-            rc['month'] = x
-            rc['percent'] = vrt
-    print(rc)
-    if rc['percent']>50:
-        return rc['month']
-    else:
-        return ''
 
 def execute_cmd(cmd: str):
-    itemkey = config.get_key_by_value(config.sootvetstvie, cmd['item'])
-    m = cmd['month']
-    i = cmd['item']
-    try:
-        n= int(cmd['number'])
-    except:
-        n='not correct'
-    if (cmd['cmd']!='showplan' and cmd['cmd']!='showfact'):
-        if n!='not correct':
-            tts.play_sound(f'Текущая команда: {config.VA_CMDS[cmd["cmd"]]}, по номенклатуре {i}, на {num2text(n)} единиц, месяц {m}')
-        else:
-            tts.play_sound(f'Число единиц для изменения значения указано не верно.')
-            return 0
-    else:
-        tts.play_sound(f'Текущая команда: {config.VA_CMDS[cmd["cmd"]]}, по номенклатуре {i},  месяц {m}')
-    plan = df[df['номенклатура'] == itemkey][cmd['month'] + "1"].iloc[0]
-    fact = df[df['номенклатура'] == itemkey][cmd['month'] + "2"].iloc[0]
+    companykey = config.get_key_by_value(config.sootvetstvie, cmd['company'])
+    #plan = df[df['номенклатура'] == itemkey][cmd['month'] + "1"].iloc[0]
+   # fact = df[df['номенклатура'] == itemkey][cmd['month'] + "2"].iloc[0]
 
-    if cmd['cmd']=='showplan':
-        tts.play_sound(f'По номенклатуре {i} в месяце {m} план равен {num2text(plan)}')
-    if cmd['cmd'] == 'showfact':
-        tts.play_sound(f'По номенклатуре {i} в месяце {m} по факту произведено {num2text(fact)}')
-    if cmd['cmd'] == 'decplan':
-        if pd.isna(plan):
-            tts.playsound('Невозможно уменьшить несуществующее значение')
-        else:
-            plan=int(plan)-n
-            df.loc[df['номенклатура'] == itemkey, f'{m}1'] = plan
-            print('done')
-    if cmd['cmd'] == 'incplan':
-        if pd.isna(plan):
-            tts.playsound('Невозможно увеличить несуществующее значение')
-        else:
-            plan=int(plan)+n
-            df.loc[df['номенклатура'] == itemkey, f'{m}1'] = plan
-            print('done')
-    if cmd['cmd'] == 'decfact':
-        if pd.isna(plan):
-            tts.playsound('Невозможно уменьшить несуществующее значение')
-        else:
-            fact = int(fact) - n
-            df.loc[df['номенклатура'] == itemkey, f'{m}1'] = fact
-            print('done')
-    if cmd['cmd'] == 'incfact':
-        if pd.isna(plan):
-            tts.playsound('Невозможно увеличить несуществующее значение')
-        else:
-            fact=int(fact)+n
-            df.loc[df['номенклатура'] == itemkey, f'{m}1'] = fact
-            print('done')
-    if cmd['cmd'] == 'setplan':
-        plan = n
-        df.loc[df['номенклатура'] == itemkey, f'{m}1'] = plan
-        print('done')
-    if cmd['cmd'] == 'setfact':
-        fact = n
-        df.loc[df['номенклатура'] == itemkey, f'{m}1'] = fact
-        print('done')
-    config.savetable('table.xlsx','output.xlsx',df)
+    if cmd['cmd']=='show1' or cmd['cmd']=='show2':
+        filtered_df = df[(df['Заказчик'] == companykey) & (df['Недогруз/Перегруз'] < 0)]
+        items = filtered_df['Синоним'].to_numpy()
+
+        tts.play_sound(f'Для заказчика {cmd["company"]} найдено {num2text(len(items))} позиций с отклонениями')
+        for item in items:
+
+            n1=filtered_df[filtered_df['Синоним']==item]["Недогруз/Перегруз"].values[0]*-1
+            n2=filtered_df[filtered_df['Синоним']==item]["Склад факт"].values[0]
+            n3=filtered_df[filtered_df['Синоним']==item]["Сум. мес. потребность"].values[0]
+            n4=filtered_df[filtered_df['Синоним']==item]["План производства"].values[0]
+            n5=n2-n1-n3+n4
+            #ei=filtered_df[filtered_df['Синоним']==item]['ЕИ'].values[0]
+            ei='кэгэ'
+            s1=f'долг за предыдущий период {num2text(n1)} {ei}'
+            s2=f'на складе {config.convert_numbers_to_words(str(n2))} {ei}'
+            s3=f'отгрузка текущего месяца {num2text(n3)} {ei}'
+            s4=f'производственная программа {num2text(n4)} {ei}'
+            if n5<0:
+                s5=f'прогнозное отклонение на конец месяца {num2text(n5*-1)} {ei}'
+            else:
+                s5=f'прогнозное отклонение на конец месяца отсутствует'
+            tts.play_sound(item)
+            tts.play_sound(s1)
+            tts.play_sound(s2)
+            tts.play_sound(s3)
+            tts.play_sound(s4)
+            tts.play_sound(s5)
+
+    elif cmd['cmd']=='comment':
+        tts.play_sound(f'коммент')
+
+    #config.savetable('table.xlsx','output.xlsx',df)
 
 
 
@@ -150,3 +107,4 @@ def execute_cmd(cmd: str):
 
 
 stt.va_listen(va_respond)
+#va_respond('алиса выполнение договоров для ооо рмт')

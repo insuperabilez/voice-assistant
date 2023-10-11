@@ -26,37 +26,34 @@ def convert_numbers_to_words(sentence):
     converted_sentence = ' '.join(converted_words)  # объединение слов обратно в предложение
     return converted_sentence
 
-df = pd.read_excel('table.xlsx')
+df = pd.read_excel('table.xlsx',decimal=',')
+
 months=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь']
 items=[]
-
 sootvetstvie={}
-for item in pd.array(df['номенклатура']):
+
+for item in pd.array(df['Заказчик']):
     converted = convert_numbers_to_words(item)
+    converted = converted.replace('"','')
+    converted=converted.lower()
     items.append(converted)
     sootvetstvie[item] = converted
 VA_ALIAS = ('алиса', 'алис', 'алисе', 'элиса')
 
-VA_TBR = (
-          'по','предмету','предмет ','предмету','за','по','на','номенклатуре','номенклатура')
+VA_TBR = ('для')
 
 
 VA_CMDS = {
-    'showplan':('озвучь план'),
-    'showfact':('озвучь факт'),
-    'decplan':('уменьши план'),
-    'incplan':('увеличь план'),
-    'decfact': ('уменьши факт'),
-    'incfact': ('увеличь факт'),
-    'setplan':('установи план'),
-    'setfact':('установи факт')
+    'show1':('выполнение договоров'),
+    'show2':('отгрузки товаров'),
+    'comment':('добавь комментарий'),
 }
 
 from openpyxl.utils.dataframe import dataframe_to_rows
 def savetable(input,output,df):
     source_book = openpyxl.load_workbook(input)
     # Загрузка исходного листа
-    source_sheet = source_book['Лист1']
+    source_sheet = source_book['Sheet']
     # Создание новой книги
     target_book = openpyxl.Workbook()
     # Создание нового листа

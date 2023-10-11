@@ -31,5 +31,5 @@ def play_sound(text):
                                  put_yo=True)
     #playsound(audio_paths)
     sd.play(audio, sample_rate * 1.05)
-    time.sleep((len(audio) / sample_rate) + 0.5)
+    time.sleep((len(audio) / sample_rate))
     sd.stop()
