@@ -28,26 +28,26 @@ def filter_cmd(raw_voice: str):
         cmd = cmd.replace(x, "").strip()
     com = recognize_cmd(' '.join(cmd.split()[0:2]))
     cmd = ' '.join(cmd.split()[2:])
+    id=''
+    comment=''
+    company = ''
     if com=='comment':
-        print(cmd)
-        pattern=r'для строки\s(.*?)\sс текстом'
+        pattern=r'для строки\s(.*?)\sтекст'
         matches=re.findall(pattern, cmd)
-        id = ''
-        comment=''
         for match in extractor(' '.join(matches)):
             id += str(match.fact.int)
         print(f'Найдена строка с номером {id}')
-        pattern2 = r"с текстом (.*)"
+        pattern2 = r"текст (.*)"
         match = re.search(pattern2, cmd)
         if match:
             comment = match.group(1)
+            print(comment)
 
     for x in config.VA_TBR:
         cmd = cmd.replace(x, "").strip()
     company=''
     if com!='comment':
         company=recognize_company(cmd)
-    print(f'command: {com}, company: {company}')
     return {'cmd':com,'company':company,'id':id,'comment':comment}
 
 def recognize_cmd(cmd: str):
@@ -77,18 +77,14 @@ def recognize_company(cmd: str):
         print('Компания не распознана')
         return ''
 
-def execute_cmd(cmd: str):
-    companykey = config.get_key_by_value(config.sootvetstvie, cmd['company'])
-    #plan = df[df['номенклатура'] == itemkey][cmd['month'] + "1"].iloc[0]
-   # fact = df[df['номенклатура'] == itemkey][cmd['month'] + "2"].iloc[0]
-
+def execute_cmd(cmd):
+    print('текущая команда:',cmd)
     if cmd['cmd']=='show1' or cmd['cmd']=='show2':
+        companykey = config.get_key_by_value(config.sootvetstvie, cmd['company'])
         filtered_df = df[(df['Заказчик'] == companykey) & (df['Недогруз/Перегруз'] < 0)]
         items = filtered_df['Синоним'].to_numpy()
-
         tts.play_sound(f'Для заказчика {cmd["company"]} найдено {num2text(len(items))} позиций с отклонениями')
         for item in items:
-
             n1=filtered_df[filtered_df['Синоним']==item]["Недогруз/Перегруз"].values[0]*-1
             n2=filtered_df[filtered_df['Синоним']==item]["Склад факт"].values[0]
             n3=filtered_df[filtered_df['Синоним']==item]["Сум. мес. потребность"].values[0]
@@ -104,21 +100,42 @@ def execute_cmd(cmd: str):
                 s5=f'прогнозное отклонение на конец месяца {num2text(n5*-1)} {ei}'
             else:
                 s5=f'прогнозное отклонение на конец месяца отсутствует'
-            tts.play_sound(item)
-            tts.play_sound(s1)
-            tts.play_sound(s2)
-            tts.play_sound(s3)
-            tts.play_sound(s4)
-            tts.play_sound(s5)
-
+            #tts.play_sound(item+s1+s2+s3+s4+s5)
+            ssml = f"""
+                    <speak>
+                        <p>
+                            {item}
+                        </p>
+                        <p>
+                            {s1}
+                        </p>
+                        <p>
+                            {s2}
+                        </p>
+                        <p>
+                            {s3}
+                        </p>
+                        <p>
+                            {s4}
+                        </p>
+                        <p>
+                            {s5}
+                        </p>
+                    </speak>
+                    """
+            tts.play_ssml_sound(ssml)
     elif cmd['cmd']=='comment':
         id=int(cmd['id'])
         comment = cmd['comment']
-        df.loc[df['ID']== id ,'Комментарий'] = comment
+        if str(id).isnumeric():
+            df.loc[df['ID']== id ,'Комментарий'] = comment
+            print(comment)
+            tts.play_sound('Комментарий добавлен')
+            config.savetable('table.xlsx', 'table.xlsx', df)
+        else:
+            tts.play_sound('Не распознан идентификационный номер')
 
-        tts.play_sound(comment)
-        config.savetable('table.xlsx', 'table.xlsx', df)
 
-
-stt.va_listen(va_respond)
-#va_respond('алиса добавь комментарий для строки три один восемь девять с текстом это комментарий')
+#stt.va_listen(va_respond)
+va_respond('алиса выполнение договоров для фирмы технологии')
+#va_respond('алиса добавь комментарий для строки три один восемь девять текст это второй комментарий')

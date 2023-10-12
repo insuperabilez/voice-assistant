@@ -33,3 +33,17 @@ def play_sound(text):
     sd.play(audio, sample_rate * 1.05)
     time.sleep((len(audio) / sample_rate))
     sd.stop()
+def play_ssml_sound(text):
+    sample_rate = 48000
+    speaker = 'xenia'
+    put_accent = True
+    put_yo = True
+    audio = model.apply_tts(ssml_text=text,
+                                 speaker=speaker,
+                                 sample_rate=sample_rate,
+                                 put_accent=True,
+                                 put_yo=True)
+    #playsound(audio_paths)
+    sd.play(audio, sample_rate * 1.05)
+    time.sleep((len(audio) / sample_rate))
+    sd.stop()
