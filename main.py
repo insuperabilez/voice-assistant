@@ -17,7 +17,7 @@ def va_respond(voice: str):
     print(voice)
     if voice.startswith(config.VA_ALIAS):
         cmd = filter_cmd(voice)
-        if cmd['company']!='' and cmd['cmd']!='None':
+        if (cmd['company']!='' and cmd['cmd']!='None') or (cmd['cmd']=='comment'):
             execute_cmd(cmd)
         else:
             print('не распознано')
@@ -27,12 +27,28 @@ def filter_cmd(raw_voice: str):
     for x in config.VA_ALIAS:
         cmd = cmd.replace(x, "").strip()
     com = recognize_cmd(' '.join(cmd.split()[0:2]))
-    cmd = ' '.join(cmd.split()[3:])
+    cmd = ' '.join(cmd.split()[2:])
+    if com=='comment':
+        print(cmd)
+        pattern=r'для строки\s(.*?)\sс текстом'
+        matches=re.findall(pattern, cmd)
+        id = ''
+        comment=''
+        for match in extractor(' '.join(matches)):
+            id += str(match.fact.int)
+        print(f'Найдена строка с номером {id}')
+        pattern2 = r"с текстом (.*)"
+        match = re.search(pattern2, cmd)
+        if match:
+            comment = match.group(1)
+
     for x in config.VA_TBR:
         cmd = cmd.replace(x, "").strip()
-    company=recognize_company(cmd)
+    company=''
+    if com!='comment':
+        company=recognize_company(cmd)
     print(f'command: {com}, company: {company}')
-    return {'cmd':com,'company':company}
+    return {'cmd':com,'company':company,'id':id,'comment':comment}
 
 def recognize_cmd(cmd: str):
     rc = {'cmd': '', 'percent': 0}
@@ -54,12 +70,11 @@ def recognize_company(cmd: str):
         if vrt > rc['percent']:
             rc['item'] = x
             rc['percent'] = vrt
-    print(rc)
     if rc['percent']>50:
         print(f'Распознана компания {rc["item"]} с уверенностью {rc["percent"]} процентов.')
         return rc['item']
     else:
-        print('Номенклатура не распознана')
+        print('Компания не распознана')
         return ''
 
 def execute_cmd(cmd: str):
@@ -97,14 +112,13 @@ def execute_cmd(cmd: str):
             tts.play_sound(s5)
 
     elif cmd['cmd']=='comment':
-        tts.play_sound(f'коммент')
+        id=int(cmd['id'])
+        comment = cmd['comment']
+        df.loc[df['ID']== id ,'Комментарий'] = comment
 
-    #config.savetable('table.xlsx','output.xlsx',df)
-
-
-
-
+        tts.play_sound(comment)
+        config.savetable('table.xlsx', 'table.xlsx', df)
 
 
 stt.va_listen(va_respond)
-#va_respond('алиса выполнение договоров для ооо рмт')
+#va_respond('алиса добавь комментарий для строки три один восемь девять с текстом это комментарий')

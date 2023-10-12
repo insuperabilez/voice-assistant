@@ -74,3 +74,5 @@ def savetable(input,output,df):
 
     # Сохранение изменений в целевой книге
     target_book.save(output)
+#num = ''.join(str(extractor(x)) for x in matches)
+#print(num)
