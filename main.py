@@ -3,6 +3,7 @@ import stt
 import tts
 from fuzzywuzzy import fuzz
 import pandas as pd
+from sms import send_message
 import re
 import numpy as np
 from extractor import NumberExtractor
@@ -17,7 +18,7 @@ def va_respond(voice: str):
     print(voice)
     if voice.startswith(config.VA_ALIAS):
         cmd = filter_cmd(voice)
-        if (cmd['company']!='' and cmd['cmd']!='None') or (cmd['cmd']=='comment'):
+        if (cmd['cmd'] in config.VA_CMDS):
             execute_cmd(cmd)
         else:
             print('не распознано')
@@ -42,11 +43,21 @@ def filter_cmd(raw_voice: str):
         if match:
             comment = match.group(1)
             print(comment)
-
+    if com == 'sendmail':
+        pattern = r'на номер\s(.*?)\sтекст'
+        matches = re.findall(pattern, cmd)
+        for match in extractor(' '.join(matches)):
+            id += str(match.fact.int)
+        print(f'распознан номер {id}')
+        pattern2 = r"текст (.*)"
+        match = re.search(pattern2, cmd)
+        if match:
+            comment = match.group(1)
+            print(f'текст сообщения {comment}')
     for x in config.VA_TBR:
         cmd = cmd.replace(x, "").strip()
     company=''
-    if com!='comment':
+    if com=='show1' or com=='show2':
         company=recognize_company(cmd)
     return {'cmd':com,'company':company,'id':id,'comment':comment}
 
@@ -79,7 +90,7 @@ def recognize_company(cmd: str):
 
 def execute_cmd(cmd):
     print('текущая команда:',cmd)
-    if cmd['cmd']=='show1' or cmd['cmd']=='show2':
+    if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']!=''):
         companykey = config.get_key_by_value(config.sootvetstvie, cmd['company'])
         filtered_df = df[(df['Заказчик'] == companykey) & (df['Недогруз/Перегруз'] < 0)]
         items = filtered_df['Синоним'].to_numpy()
@@ -127,15 +138,23 @@ def execute_cmd(cmd):
     elif cmd['cmd']=='comment':
         id=int(cmd['id'])
         comment = cmd['comment']
-        if str(id).isnumeric():
+        if str(cmd['id']).isnumeric() and cmd['comment']!='':
+            id = int(cmd['id'])
+            comment = cmd['comment']
             df.loc[df['ID']== id ,'Комментарий'] = comment
             print(comment)
             tts.play_sound('Комментарий добавлен')
             config.savetable('table.xlsx', 'table.xlsx', df)
         else:
             tts.play_sound('Не распознан идентификационный номер')
-
-
-#stt.va_listen(va_respond)
-va_respond('алиса выполнение договоров для фирмы технологии')
+    elif cmd['cmd'] == 'sendmail':
+        number=cmd['id']
+        text=cmd['comment']
+        if number.isnumeric():
+            send_message(number,text)
+            tts.play_sound('Сообщение отправлено')
+stt.va_listen(va_respond)
+#va_respond('алиса отправь сообщение на номер восемь девять шесть пять восемь четыре девять восемь четыре семь восемь текст это текст сообщения голосового помощника')
+#va_respond('алиса отправь сообщение на номер три три семь текст это текст сообщения')
 #va_respond('алиса добавь комментарий для строки три один восемь девять текст это второй комментарий')
+#va_respond('алиса выполнение договоров для фирмы технологии')
