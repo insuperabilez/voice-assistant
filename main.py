@@ -9,11 +9,11 @@ import numpy as np
 from extractor import NumberExtractor
 from number_to_text import num2text
 from openpyxl import load_workbook
-tts.play_sound('Голосовой ассистент готов.')
 df = pd.read_excel('table.xlsx',decimal=',')
 ints = ['Склад факт','Недогруз/Перегруз','План производства','Факт производства цеха','Сум. мес. потребность','Сум. мес. отгрузка']
 df[ints]=df[ints].astype(float)
 extractor = NumberExtractor()
+tts.play_sound('Голосовой ассистент готов.')
 def va_respond(voice: str):
     print(voice)
     if voice.startswith(config.VA_ALIAS):
@@ -44,11 +44,11 @@ def filter_cmd(raw_voice: str):
             comment = match.group(1)
             print(comment)
     if com == 'sendmail':
-        pattern = r'на номер\s(.*?)\sтекст'
+        pattern = r'\s(.*?)\sтекст'
         matches = re.findall(pattern, cmd)
-        for match in extractor(' '.join(matches)):
-            id += str(match.fact.int)
-        print(f'распознан номер {id}')
+        department=' '.join(matches)
+        department=recognize_department(department)
+        id=department
         pattern2 = r"текст (.*)"
         match = re.search(pattern2, cmd)
         if match:
@@ -88,34 +88,61 @@ def recognize_company(cmd: str):
         print('Компания не распознана')
         return ''
 
+def recognize_department(cmd: str):
+    rc = {'item': '', 'percent': 0}
+    for x in config.sections:
+        vrt = fuzz.ratio(cmd, x)
+        if vrt > rc['percent']:
+            rc['item'] = x
+            rc['percent'] = vrt
+    if rc['percent']>50:
+        print(f'Распознан отдел {rc["item"]} с уверенностью {rc["percent"]} процентов.')
+        return rc['item']
+    else:
+        print('Отдел не распознан')
+        return ''
 def execute_cmd(cmd):
     print('текущая команда:',cmd)
     if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']!=''):
         companykey = config.get_key_by_value(config.sootvetstvie, cmd['company'])
         filtered_df = df[(df['Заказчик'] == companykey) & (df['Недогруз/Перегруз'] < 0)]
-        items = filtered_df['Синоним'].to_numpy()
+        baditems = filtered_df['Синоним'].to_numpy()
+        vectorized_convert = np.vectorize(config.convert_numbers_to_words)
+        items=vectorized_convert(baditems)
         tts.play_sound(f'Для заказчика {cmd["company"]} найдено {num2text(len(items))} позиций с отклонениями')
-        for item in items:
+        for idx,item in enumerate(baditems):
             n1=filtered_df[filtered_df['Синоним']==item]["Недогруз/Перегруз"].values[0]*-1
             n2=filtered_df[filtered_df['Синоним']==item]["Склад факт"].values[0]
             n3=filtered_df[filtered_df['Синоним']==item]["Сум. мес. потребность"].values[0]
             n4=filtered_df[filtered_df['Синоним']==item]["План производства"].values[0]
             n5=n2-n1-n3+n4
-            #ei=filtered_df[filtered_df['Синоним']==item]['ЕИ'].values[0]
-            ei='кэгэ'
-            s1=f'долг за предыдущий период {num2text(n1)} {ei}'
-            s2=f'на складе {config.convert_numbers_to_words(str(n2))} {ei}'
-            s3=f'отгрузка текущего месяца {num2text(n3)} {ei}'
-            s4=f'производственная программа {num2text(n4)} {ei}'
+            arr=[n1,n2,n3,n4,n5]
+            for i in range(len(arr)):
+                if arr[i].is_integer():
+                    arr[i] = int(arr[i])
+            EI=filtered_df[filtered_df['Синоним']==item]['ЕИ'].values[0]
+            ei=''
+            match EI:
+                case 'КГ':
+                    ei='кэгэ'
+                case 'ТН':
+                    ei = 'тээн'
+                case 'М':
+                    ei = 'эм'
+            s1=f'долг за предыдущий период {config.convert_numbers_to_words(str(arr[0]))} {ei}'
+            s2=f'на складе {config.convert_numbers_to_words(str(arr[1]))} {ei}'
+            s3=f'отгрузка текущего месяца {config.convert_numbers_to_words(str(arr[2]))} {ei}'
+            s4=f'производственная программа {config.convert_numbers_to_words(str(arr[3]))} {ei}'
             if n5<0:
-                s5=f'прогнозное отклонение на конец месяца {num2text(n5*-1)} {ei}'
+                s5=f'прогнозное отклонение на конец месяца {config.convert_numbers_to_words(str(arr[4]*-1))} {ei}'
             else:
                 s5=f'прогнозное отклонение на конец месяца отсутствует'
             #tts.play_sound(item+s1+s2+s3+s4+s5)
+
             ssml = f"""
                     <speak>
                         <p>
-                            {item}
+                            {items[idx]}
                         </p>
                         <p>
                             {s1}
@@ -136,25 +163,26 @@ def execute_cmd(cmd):
                     """
             tts.play_ssml_sound(ssml)
     elif cmd['cmd']=='comment':
-        id=int(cmd['id'])
-        comment = cmd['comment']
         if str(cmd['id']).isnumeric() and cmd['comment']!='':
             id = int(cmd['id'])
             comment = cmd['comment']
             df.loc[df['ID']== id ,'Комментарий'] = comment
             print(comment)
-            tts.play_sound('Комментарий добавлен')
             config.savetable('table.xlsx', 'table.xlsx', df)
+            tts.play_sound('Комментарий добавлен')
         else:
             tts.play_sound('Не распознан идентификационный номер')
     elif cmd['cmd'] == 'sendmail':
-        number=cmd['id']
+        department=cmd['id']
+        cfg=config.cfg
         text=cmd['comment']
-        if number.isnumeric():
-            send_message(number,text)
-            tts.play_sound('Сообщение отправлено')
+        options = cfg.options(department)
+        for option in options:
+            value = cfg.get(department, option)
+            send_message(value,text)
+        tts.play_sound('Сообщения отправлены')
 stt.va_listen(va_respond)
-#va_respond('алиса отправь сообщение на номер восемь девять шесть пять восемь четыре девять восемь четыре семь восемь текст это текст сообщения голосового помощника')
-#va_respond('алиса отправь сообщение на номер три три семь текст это текст сообщения')
-#va_respond('алиса добавь комментарий для строки три один восемь девять текст это второй комментарий')
-#va_respond('алиса выполнение договоров для фирмы технологии')
+#va_respond('алиса отправь сообщение в отдел сбыта текст проверка')
+#va_respond('алиса добавь комментарий для строки четыре ноль восемь восемь текст это второй комментарий')
+#va_respond('алиса выполнение договоров для промтех дубна')
+#2769
