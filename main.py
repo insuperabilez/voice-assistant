@@ -107,7 +107,8 @@ def recognize_department(cmd: str):
         print('Отдел не распознан')
         return ''
 def execute_cmd(cmd):
-
+    if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']==''):
+        return
     tts.play_sound(f'текущая команда {config.VA_CMDS[cmd["cmd"]]}')
     if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']!=''):
         companykey = config.get_key_by_value(config.sootvetstvie, cmd['company'])
@@ -129,9 +130,11 @@ def execute_cmd(cmd):
             if round_values==1:
                 arr=[round(x) for x in arr]
             else :
+                arr[4]=round(arr[4],1)
                 for i in range(len(arr)):
                     if arr[i].is_integer():
                         arr[i] = int(arr[i])
+
             EI=filtered_df[filtered_df['Синоним']==item]['ЕИ'].values[0]
             ei=''
             match EI:
@@ -172,15 +175,15 @@ def execute_cmd(cmd):
                     """
             #tts.play_ssml_sound(ssml)
             tts.play_sound(items[idx])
-            time.sleep(pause_between_rows/1000)
+
             tts.play_sound(s1)
-            time.sleep(pause_between_rows/1000)
+
             tts.play_sound(s2)
-            time.sleep(pause_between_rows/1000)
+
             tts.play_sound(s3)
-            time.sleep(pause_between_rows/1000)
+
             tts.play_sound(s4)
-            time.sleep(pause_between_rows/1000)
+
             tts.play_sound(s5)
             time.sleep(pause_between_items/1000)
     elif cmd['cmd']=='comment':
@@ -200,7 +203,9 @@ def execute_cmd(cmd):
             value = cfg.get(department, option)
             send_message(value,text)
         tts.play_sound('Сообщения отправлены')
+
 stt.va_listen(va_respond)
 #va_respond('алиса отправь сообщение в отдел сбыта текст проверка')
-#va_respond('алиса выполнение договоров для п а корпорация ависмед')
+
+#va_respond('алиса выполнение договоров для корпорация ависмед')
 #va_respond('алиса добавь комментарий для строки один два ноль текст комментарий')
