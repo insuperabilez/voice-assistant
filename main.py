@@ -13,6 +13,8 @@ df = pd.read_excel('table.xlsx',decimal=',')
 ints = ['Склад факт','Недогруз/Перегруз','План производства','Факт производства цеха','Сум. мес. потребность','Сум. мес. отгрузка']
 df[ints]=df[ints].astype(float)
 extractor = NumberExtractor()
+cfg=config.cfg
+pause = cfg.get('AUDIO', 'pause_between_rows')
 tts.play_sound('Голосовой ассистент готов.')
 def va_respond(voice: str):
     print(voice)
@@ -42,7 +44,6 @@ def filter_cmd(raw_voice: str):
         match = re.search(pattern2, cmd)
         if match:
             comment = match.group(1)
-            print(comment)
     if com == 'sendmail':
         pattern = r'\s(.*?)\sтекст'
         matches = re.findall(pattern, cmd)
@@ -102,33 +103,38 @@ def recognize_department(cmd: str):
         print('Отдел не распознан')
         return ''
 def execute_cmd(cmd):
-    print('текущая команда:',cmd)
+
+    tts.play_sound(f'текущая команда {config.VA_CMDS[cmd["cmd"]]}')
     if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']!=''):
         companykey = config.get_key_by_value(config.sootvetstvie, cmd['company'])
         filtered_df = df[(df['Заказчик'] == companykey) & (df['Недогруз/Перегруз'] < 0)]
         baditems = filtered_df['Синоним'].to_numpy()
         vectorized_convert = np.vectorize(config.convert_numbers_to_words)
-        items=vectorized_convert(baditems)
+        if len(baditems) >0 :
+            items=vectorized_convert(baditems)
+        else:
+            items=[]
         tts.play_sound(f'Для заказчика {cmd["company"]} найдено {num2text(len(items))} позиций с отклонениями')
         for idx,item in enumerate(baditems):
-            n1=filtered_df[filtered_df['Синоним']==item]["Недогруз/Перегруз"].values[0]*-1
-            n2=filtered_df[filtered_df['Синоним']==item]["Склад факт"].values[0]
-            n3=filtered_df[filtered_df['Синоним']==item]["Сум. мес. потребность"].values[0]
-            n4=filtered_df[filtered_df['Синоним']==item]["План производства"].values[0]
+            n1=round(filtered_df[filtered_df['Синоним']==item]["Недогруз/Перегруз"].values[0]*-1)
+            n2=round(filtered_df[filtered_df['Синоним']==item]["Склад факт"].values[0])
+            n3=round(filtered_df[filtered_df['Синоним']==item]["Сум. мес. потребность"].values[0])
+            n4=round(filtered_df[filtered_df['Синоним']==item]["План производства"].values[0])
             n5=n2-n1-n3+n4
             arr=[n1,n2,n3,n4,n5]
-            for i in range(len(arr)):
-                if arr[i].is_integer():
-                    arr[i] = int(arr[i])
             EI=filtered_df[filtered_df['Синоним']==item]['ЕИ'].values[0]
             ei=''
             match EI:
                 case 'КГ':
-                    ei='кэгэ'
+                    ei='килограмм'
                 case 'ТН':
                     ei = 'тээн'
                 case 'М':
                     ei = 'эм'
+                case 'ШТ':
+                    ei='штук'
+                case 'М':
+                    ei='метр'
             s1=f'долг за предыдущий период {config.convert_numbers_to_words(str(arr[0]))} {ei}'
             s2=f'на складе {config.convert_numbers_to_words(str(arr[1]))} {ei}'
             s3=f'отгрузка текущего месяца {config.convert_numbers_to_words(str(arr[2]))} {ei}'
@@ -137,26 +143,19 @@ def execute_cmd(cmd):
                 s5=f'прогнозное отклонение на конец месяца {config.convert_numbers_to_words(str(arr[4]*-1))} {ei}'
             else:
                 s5=f'прогнозное отклонение на конец месяца отсутствует'
-            #tts.play_sound(item+s1+s2+s3+s4+s5)
-
             ssml = f"""
                     <speak>
                         <p>
                             {items[idx]}
-                        </p>
-                        <p>
+                        <break time="{pause}ms"/>
                             {s1}
-                        </p>
-                        <p>
+                        <break time="{pause}ms"/>
                             {s2}
-                        </p>
-                        <p>
+                        <break time="{pause}ms"/>
                             {s3}
-                        </p>
-                        <p>
+                        <break time="{pause}ms"/>
                             {s4}
-                        </p>
-                        <p>
+                        <break time="{pause}ms"/>
                             {s5}
                         </p>
                     </speak>
@@ -167,22 +166,20 @@ def execute_cmd(cmd):
             id = int(cmd['id'])
             comment = cmd['comment']
             df.loc[df['ID']== id ,'Комментарий'] = comment
-            print(comment)
             config.savetable('table.xlsx', 'table.xlsx', df)
             tts.play_sound('Комментарий добавлен')
         else:
             tts.play_sound('Не распознан идентификационный номер')
     elif cmd['cmd'] == 'sendmail':
         department=cmd['id']
-        cfg=config.cfg
         text=cmd['comment']
         options = cfg.options(department)
         for option in options:
             value = cfg.get(department, option)
             send_message(value,text)
         tts.play_sound('Сообщения отправлены')
-stt.va_listen(va_respond)
+#stt.va_listen(va_respond)
 #va_respond('алиса отправь сообщение в отдел сбыта текст проверка')
 #va_respond('алиса добавь комментарий для строки четыре ноль восемь восемь текст это второй комментарий')
-#va_respond('алиса выполнение договоров для промтех дубна')
+va_respond('алиса выполнение договоров для промтех дубна')
 #2769

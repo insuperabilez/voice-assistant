@@ -1,5 +1,6 @@
 ﻿import pandas as pd
 import re
+from copy import copy
 from number_to_text import num2text
 import openpyxl
 from openpyxl import load_workbook
@@ -42,7 +43,7 @@ for item in pd.array(df['Заказчик']):
     converted=converted.lower()
     items.append(converted)
     sootvetstvie[item] = converted
-VA_ALIAS = ('алиса', 'алис', 'алисе', 'элиса')
+VA_ALIAS = []
 
 VA_TBR = ('для')
 
@@ -64,18 +65,20 @@ def savetable(input,output,df):
     # Создание нового листа
     target_sheet = target_book.active
     ws=target_book.active
+    for c in ['E','G','H','I']:
+        ws.column_dimensions[c].width = 20
     # Перенос стилей ячеек
     for r in dataframe_to_rows(df, index=False, header=True):
         ws.append(r)
     for row in source_sheet.iter_rows():
         for cell in row:
             target_cell = target_sheet[cell.coordinate]
-            target_cell.font = cell.font.copy()
-            target_cell.border = cell.border.copy()
-            target_cell.fill = cell.fill.copy()
-            target_cell.number_format = cell.number_format
-            target_cell.protection = cell.protection.copy()
-            target_cell.alignment = cell.alignment.copy()
+            target_cell.font = copy(cell.font)
+            target_cell.border = copy(cell.border)
+            target_cell.fill = copy(cell.fill)
+            target_cell.number_format = copy(cell.number_format)
+            target_cell.protection = copy(cell.protection)
+            target_cell.alignment = copy(cell.alignment)
 
     # Сохранение изменений в целевой книге
     target_book.save(output)
@@ -84,3 +87,6 @@ import configparser
 cfg = configparser.ConfigParser()
 cfg.read('config.ini')
 sections = cfg.sections()
+for option in cfg.options('NAMES'):
+    VA_ALIAS.append(cfg.get('NAMES', option))
+VA_ALIAS = tuple(VA_ALIAS)
