@@ -178,8 +178,8 @@ def execute_cmd(cmd):
             value = cfg.get(department, option)
             send_message(value,text)
         tts.play_sound('Сообщения отправлены')
-#stt.va_listen(va_respond)
+stt.va_listen(va_respond)
 #va_respond('алиса отправь сообщение в отдел сбыта текст проверка')
 #va_respond('алиса добавь комментарий для строки четыре ноль восемь восемь текст это второй комментарий')
-va_respond('алиса выполнение договоров для промтех дубна')
+#va_respond('алиса выполнение договоров для промтех дубна')
 #2769
