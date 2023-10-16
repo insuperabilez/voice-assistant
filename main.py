@@ -22,8 +22,8 @@ round_values = int(cfg.get('AUDIO', 'round_values'))
 tts.play_sound('Голосовой ассистент готов.')
 def va_respond(voice: str):
     print(voice)
-    tts.play_sound('Запрос принят')
     if voice.startswith(config.VA_ALIAS):
+        tts.play_sound('Запрос принят')
         cmd = filter_cmd(voice)
         if (cmd['cmd'] in config.VA_CMDS):
             execute_cmd(cmd)
