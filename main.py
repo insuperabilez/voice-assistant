@@ -22,12 +22,13 @@ round_values = int(cfg.get('AUDIO', 'round_values'))
 tts.play_sound('Голосовой ассистент готов.')
 def va_respond(voice: str):
     print(voice)
+    tts.play_sound('Запрос принят')
     if voice.startswith(config.VA_ALIAS):
         cmd = filter_cmd(voice)
         if (cmd['cmd'] in config.VA_CMDS):
             execute_cmd(cmd)
         else:
-            print('не распознано')
+            tts.play_sound('не распознано')
 
 def filter_cmd(raw_voice: str):
     cmd = raw_voice
@@ -87,10 +88,10 @@ def recognize_company(cmd: str):
             rc['item'] = x
             rc['percent'] = vrt
     if rc['percent']>50:
-        print(f'Распознана компания {rc["item"]} с уверенностью {rc["percent"]} процентов.')
+        print(f'Распознан заказчик {rc["item"]} с уверенностью {rc["percent"]} процентов.')
         return rc['item']
     else:
-        print('Компания не распознана')
+        tts.play_sound('Заказчик не распознан')
         return ''
 
 def recognize_department(cmd: str):
@@ -104,12 +105,11 @@ def recognize_department(cmd: str):
         print(f'Распознан отдел {rc["item"]} с уверенностью {rc["percent"]} процентов.')
         return rc['item']
     else:
-        print('Отдел не распознан')
+        tts.play_sound('Отдел не распознан')
         return ''
 def execute_cmd(cmd):
     if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']==''):
         return
-    tts.play_sound(f'текущая команда {config.VA_CMDS[cmd["cmd"]]}')
     if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']!=''):
         companykey = config.get_key_by_value(config.sootvetstvie, cmd['company'])
         filtered_df = df[(df['Заказчик'] == companykey) & (df['Недогруз/Перегруз'] < 0)]
@@ -158,7 +158,7 @@ def execute_cmd(cmd):
                 s5=f'прогнозное отклонение на конец месяца отсутствует'
             ssml = f"""
                     <speak>
-                        <p>
+                        
                             {items[idx]}
                         <break time="{pause_between_rows}ms"/>
                             {s1}
@@ -170,22 +170,11 @@ def execute_cmd(cmd):
                             {s4}
                         <break time="{pause_between_rows}ms"/>
                             {s5}
-                        </p>
+                        
                     </speak>
                     """
-            #tts.play_ssml_sound(ssml)
-            tts.play_sound(items[idx])
+            tts.play_ssml_sound(ssml)
 
-            tts.play_sound(s1)
-
-            tts.play_sound(s2)
-
-            tts.play_sound(s3)
-
-            tts.play_sound(s4)
-
-            tts.play_sound(s5)
-            time.sleep(pause_between_items/1000)
     elif cmd['cmd']=='comment':
         if str(cmd['id']).isnumeric() and cmd['comment']!='':
             id = int(cmd['id'])
@@ -206,6 +195,6 @@ def execute_cmd(cmd):
 
 stt.va_listen(va_respond)
 #va_respond('алиса отправь сообщение в отдел сбыта текст проверка')
-
+#va_respond('алиса добавь комментарий для строки один два ноль текст комментарий')
 #va_respond('алиса выполнение договоров для корпорация ависмед')
 #va_respond('алиса добавь комментарий для строки один два ноль текст комментарий')
