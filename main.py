@@ -2,6 +2,7 @@
 import stt
 import tts
 from fuzzywuzzy import fuzz
+import time
 import pandas as pd
 from sms import send_message
 import re
@@ -12,9 +13,12 @@ from openpyxl import load_workbook
 df = pd.read_excel('table.xlsx',decimal=',')
 ints = ['Склад факт','Недогруз/Перегруз','План производства','Факт производства цеха','Сум. мес. потребность','Сум. мес. отгрузка']
 df[ints]=df[ints].astype(float)
+#df['Комментарий']=df['Комментарий'].astype('string')
 extractor = NumberExtractor()
 cfg=config.cfg
-pause = cfg.get('AUDIO', 'pause_between_rows')
+pause_between_rows = int(cfg.get('AUDIO', 'pause_between_rows'))
+pause_between_items = int(cfg.get('AUDIO', 'pause_between_items'))
+round_values = int(cfg.get('AUDIO', 'round_values'))
 tts.play_sound('Голосовой ассистент готов.')
 def va_respond(voice: str):
     print(voice)
@@ -116,12 +120,18 @@ def execute_cmd(cmd):
             items=[]
         tts.play_sound(f'Для заказчика {cmd["company"]} найдено {num2text(len(items))} позиций с отклонениями')
         for idx,item in enumerate(baditems):
-            n1=round(filtered_df[filtered_df['Синоним']==item]["Недогруз/Перегруз"].values[0]*-1)
-            n2=round(filtered_df[filtered_df['Синоним']==item]["Склад факт"].values[0])
-            n3=round(filtered_df[filtered_df['Синоним']==item]["Сум. мес. потребность"].values[0])
-            n4=round(filtered_df[filtered_df['Синоним']==item]["План производства"].values[0])
+            n1=filtered_df[filtered_df['Синоним']==item]["Недогруз/Перегруз"].values[0]*-1
+            n2=filtered_df[filtered_df['Синоним']==item]["Склад факт"].values[0]
+            n3=filtered_df[filtered_df['Синоним']==item]["Сум. мес. потребность"].values[0]
+            n4=filtered_df[filtered_df['Синоним']==item]["План производства"].values[0]
             n5=n2-n1-n3+n4
             arr=[n1,n2,n3,n4,n5]
+            if round_values==1:
+                arr=[round(x) for x in arr]
+            else :
+                for i in range(len(arr)):
+                    if arr[i].is_integer():
+                        arr[i] = int(arr[i])
             EI=filtered_df[filtered_df['Синоним']==item]['ЕИ'].values[0]
             ei=''
             match EI:
@@ -147,20 +157,32 @@ def execute_cmd(cmd):
                     <speak>
                         <p>
                             {items[idx]}
-                        <break time="{pause}ms"/>
+                        <break time="{pause_between_rows}ms"/>
                             {s1}
-                        <break time="{pause}ms"/>
+                        <break time="{pause_between_rows}ms"/>
                             {s2}
-                        <break time="{pause}ms"/>
+                        <break time="{pause_between_rows}ms"/>
                             {s3}
-                        <break time="{pause}ms"/>
+                        <break time="{pause_between_rows}ms"/>
                             {s4}
-                        <break time="{pause}ms"/>
+                        <break time="{pause_between_rows}ms"/>
                             {s5}
                         </p>
                     </speak>
                     """
-            tts.play_ssml_sound(ssml)
+            #tts.play_ssml_sound(ssml)
+            tts.play_sound(items[idx])
+            time.sleep(pause_between_rows/1000)
+            tts.play_sound(s1)
+            time.sleep(pause_between_rows/1000)
+            tts.play_sound(s2)
+            time.sleep(pause_between_rows/1000)
+            tts.play_sound(s3)
+            time.sleep(pause_between_rows/1000)
+            tts.play_sound(s4)
+            time.sleep(pause_between_rows/1000)
+            tts.play_sound(s5)
+            time.sleep(pause_between_items/1000)
     elif cmd['cmd']=='comment':
         if str(cmd['id']).isnumeric() and cmd['comment']!='':
             id = int(cmd['id'])
@@ -180,6 +202,5 @@ def execute_cmd(cmd):
         tts.play_sound('Сообщения отправлены')
 stt.va_listen(va_respond)
 #va_respond('алиса отправь сообщение в отдел сбыта текст проверка')
-#va_respond('алиса добавь комментарий для строки четыре ноль восемь восемь текст это второй комментарий')
-#va_respond('алиса выполнение договоров для промтех дубна')
-#2769
+#va_respond('алиса выполнение договоров для п а корпорация ависмед')
+#va_respond('алиса добавь комментарий для строки один два ноль текст комментарий')
