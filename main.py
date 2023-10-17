@@ -178,8 +178,12 @@ def execute_cmd(cmd):
             id = int(cmd['id'])
             comment = cmd['comment']
             df.loc[df['ID']== id ,'Комментарий'] = comment
-            config.savetable('table.xlsx', 'table.xlsx', df)
-            tts.play_sound('Комментарий добавлен')
+            try:
+                config.savetable('table.xlsx', 'table.xlsx', df)
+                tts.play_sound('Комментарий добавлен')
+            except:
+                tts.play_sound('Доступ к файлу заблокирован')
+            
         else:
             tts.play_sound('Не распознан идентификационный номер')
     elif cmd['cmd'] == 'sendmail':
