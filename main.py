@@ -19,7 +19,7 @@ cfg=config.cfg
 pause_between_rows = int(cfg.get('AUDIO', 'pause_between_rows'))
 pause_between_items = int(cfg.get('AUDIO', 'pause_between_items'))
 round_values = int(cfg.get('AUDIO', 'round_values'))
-tts.play_sound('Голосовой ассистент готов.')
+tts.play_sound('Голосовой ассистент готов')
 def va_respond(voice: str):
     print(voice)
     if voice.startswith(config.VA_ALIAS):
@@ -53,8 +53,7 @@ def filter_cmd(raw_voice: str):
         pattern = r'\s(.*?)\sтекст'
         matches = re.findall(pattern, cmd)
         department=' '.join(matches)
-        department=recognize_department(department)
-        id=department
+        id=recognize_department(department)
         pattern2 = r"текст (.*)"
         match = re.search(pattern2, cmd)
         if match:
@@ -96,7 +95,7 @@ def recognize_company(cmd: str):
 
 def recognize_department(cmd: str):
     rc = {'item': '', 'percent': 0}
-    for x in config.sections:
+    for v,x in config.departments.items():
         vrt = fuzz.ratio(cmd, x)
         if vrt > rc['percent']:
             rc['item'] = x
@@ -158,7 +157,6 @@ def execute_cmd(cmd):
                 s5=f'прогнозное отклонение на конец месяца отсутствует'
             ssml = f"""
                     <speak>
-                        
                             {items[idx]}
                         <break time="{pause_between_rows}ms"/>
                             {s1}
@@ -185,13 +183,28 @@ def execute_cmd(cmd):
         else:
             tts.play_sound('Не распознан идентификационный номер')
     elif cmd['cmd'] == 'sendmail':
-        department=cmd['id']
+        if cmd['id']=='' or cmd['comment']=='':
+            return
+        department = config.get_key_by_value(config.departments, cmd['id'])
+
         text=cmd['comment']
         options = cfg.options(department)
+        sended=0
         for option in options:
             value = cfg.get(department, option)
-            send_message(value,text)
-        tts.play_sound('Сообщения отправлены')
+            try:
+                send_message(value,text)
+                sended=sended+1
+            except:
+                print('Ошибка отправки сообщения')
+        if sended!=len(options):
+            tts.play_sound('Ошибка отправки сообщения')
+        elif sended>0:
+            tts.play_sound('Сообщения отправлены')
+        elif sended==0 and len(options)==0:
+            tts.play_sound('Адресат не указан')
+
+
 
 stt.va_listen(va_respond)
 #va_respond('алиса отправь сообщение в отдел сбыта текст проверка')

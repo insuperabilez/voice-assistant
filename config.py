@@ -35,6 +35,7 @@ df = pd.read_excel('table.xlsx',decimal=',')
 months=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь']
 items=[]
 sootvetstvie={}
+
 for item in pd.array(df['Заказчик']):
     converted = convert_numbers_to_words(item)
     converted = converted.replace('"','')
@@ -90,3 +91,11 @@ sections = cfg.sections()
 for option in cfg.options('NAMES'):
     VA_ALIAS.append(cfg.get('NAMES', option))
 VA_ALIAS = tuple(VA_ALIAS)
+departments={}
+for item in sections:
+    converted = convert_numbers_to_words(item)
+    converted = converted.replace('"','')
+    converted = converted.replace('-', ' ')
+    converted = converted.replace(':', ' ')
+    converted=converted.lower()
+    departments[item] = converted
