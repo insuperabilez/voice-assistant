@@ -3,6 +3,9 @@ import stt
 import tts
 from fuzzywuzzy import fuzz
 import time
+import sounddevice as sd
+import multiprocessing
+import threading
 import pandas as pd
 from sms import send_message
 import re
@@ -20,22 +23,46 @@ pause_between_rows = int(cfg.get('AUDIO', 'pause_between_rows'))
 pause_between_items = int(cfg.get('AUDIO', 'pause_between_items'))
 round_values = int(cfg.get('AUDIO', 'round_values'))
 tts.play_sound('Голосовой ассистент готов')
+class StoppableThread(threading.Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self,  *args, **kwargs):
+        super(StoppableThread, self).__init__(*args, **kwargs)
+        self._stop_event = threading.Event()
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
+def thread_process(voice):
+
+    cmd = filter_cmd(voice)
+    if (cmd['cmd'] in config.VA_CMDS):
+        execute_cmd(cmd)
+    else:
+        tts.play_sound('не распознано')
 def va_respond(voice: str):
     print(voice)
     if voice.startswith(config.VA_ALIAS):
         tts.play_sound('Запрос принят')
-        cmd = filter_cmd(voice)
-        if (cmd['cmd'] in config.VA_CMDS):
-            execute_cmd(cmd)
-        else:
-            tts.play_sound('не распознано')
-
+        th = StoppableThread(target=thread_process,args=(voice,))
+        th.start()
 def filter_cmd(raw_voice: str):
     cmd = raw_voice
     for x in config.VA_ALIAS:
         cmd = cmd.replace(x, "").strip()
     com = recognize_cmd(' '.join(cmd.split()[0:2]))
     cmd = ' '.join(cmd.split()[2:])
+    if com=='stop':
+        tts.play_sound('Остановка потоков')
+        all_threads = threading.enumerate()
+        other_threads = [thread for thread in all_threads if thread != threading.main_thread() and thread != threading.current_thread()]
+        for thread in other_threads:
+            print('Остановлен поток:', thread)
+            thread.stop()
+            thread.join()
     id=''
     comment=''
     company = ''
@@ -107,6 +134,9 @@ def recognize_department(cmd: str):
         tts.play_sound('Отдел не распознан')
         return ''
 def execute_cmd(cmd):
+    cur_tr = threading.current_thread()
+    if cur_tr.stopped():
+        return
     if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']==''):
         return
     if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']!=''):
@@ -120,6 +150,8 @@ def execute_cmd(cmd):
             items=[]
         tts.play_sound(f'Для заказчика {cmd["company"]} найдено {num2text(len(items))} позиций с отклонениями')
         for idx,item in enumerate(baditems):
+            if cur_tr.stopped():
+                return
             n1=filtered_df[filtered_df['Синоним']==item]["Недогруз/Перегруз"].values[0]*-1
             n2=filtered_df[filtered_df['Синоним']==item]["Склад факт"].values[0]
             n3=filtered_df[filtered_df['Синоним']==item]["Сум. мес. потребность"].values[0]
@@ -208,10 +240,17 @@ def execute_cmd(cmd):
         elif sended==0 and len(options)==0:
             tts.play_sound('Адресат не указан')
 
+def main():
+
+    stt.va_listen(va_respond)
+    #va_respond('алиса выполнение договоров для пао корпорация ависма')
+    #va_respond('алиса стоп')
+    #va_respond('алиса отправь сообщение в отдел сбыта текст проверка')
+    #va_respond('алиса добавь комментарий для строки один два ноль текст комментарий')
+    #va_respond('алиса выполнение договоров для корпорация ависмед')
+    #va_respond('алиса добавь комментарий для строки один два ноль текст комментарий')
+
+if __name__ == "__main__":
+    main()
 
 
-stt.va_listen(va_respond)
-#va_respond('алиса отправь сообщение в отдел сбыта текст проверка')
-#va_respond('алиса добавь комментарий для строки один два ноль текст комментарий')
-#va_respond('алиса выполнение договоров для корпорация ависмед')
-#va_respond('алиса добавь комментарий для строки один два ноль текст комментарий')

@@ -5,10 +5,10 @@ from email.mime.multipart import MIMEMultipart
 import configparser
 
 def send_message(number,text):
-    smtp_server = 'smtp.yandex.ru'
-    smtp_port = 587
     config = configparser.ConfigParser()
     config.read('config.ini')
+    smtp_server = config.get('MAIL', 'smtp_server')
+    smtp_port = int(config.get('MAIL', 'smtp_port'))
     smtp_username = config.get('MAIL', 'smtp_username')
     smtp_password = config.get('MAIL', 'smtp_password')
     smtp_address = config.get('MAIL', 'smtp_address')

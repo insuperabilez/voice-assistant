@@ -53,7 +53,8 @@ VA_CMDS = {
     'show1':('выполнение договоров'),
     'show2':('отгрузки товаров'),
     'comment':('добавь комментарий'),
-    'sendmail':('отправь сообщение')
+    'sendmail':('отправь сообщение'),
+    'stop':('стоп')
 }
 
 from openpyxl.utils.dataframe import dataframe_to_rows

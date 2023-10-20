@@ -2,7 +2,6 @@
 import os
 import torch
 import time
-from playsound import playsound
 import sounddevice as sd
 
 device = torch.device('cpu')
