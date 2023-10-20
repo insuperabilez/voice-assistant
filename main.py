@@ -55,8 +55,7 @@ def filter_cmd(raw_voice: str):
         cmd = cmd.replace(x, "").strip()
     com = recognize_cmd(' '.join(cmd.split()[0:2]))
     cmd = ' '.join(cmd.split()[2:])
-    if com=='stop':
-        tts.play_sound('Остановка потоков')
+    if com.startswith('stop'):
         all_threads = threading.enumerate()
         other_threads = [thread for thread in all_threads if thread != threading.main_thread() and thread != threading.current_thread()]
         for thread in other_threads:
@@ -134,8 +133,8 @@ def recognize_department(cmd: str):
         tts.play_sound('Отдел не распознан')
         return ''
 def execute_cmd(cmd):
-    cur_tr = threading.current_thread()
-    if cur_tr.stopped():
+    cur_thread = threading.current_thread()
+    if cur_thread.stopped():
         return
     if (cmd['cmd']=='show1' or cmd['cmd']=='show2') and (cmd['company']==''):
         return
@@ -150,7 +149,7 @@ def execute_cmd(cmd):
             items=[]
         tts.play_sound(f'Для заказчика {cmd["company"]} найдено {num2text(len(items))} позиций с отклонениями')
         for idx,item in enumerate(baditems):
-            if cur_tr.stopped():
+            if cur_thread.stopped():
                 return
             n1=filtered_df[filtered_df['Синоним']==item]["Недогруз/Перегруз"].values[0]*-1
             n2=filtered_df[filtered_df['Синоним']==item]["Склад факт"].values[0]
@@ -187,19 +186,23 @@ def execute_cmd(cmd):
                 s5=f'прогнозное отклонение на конец месяца {config.convert_numbers_to_words(str(arr[4]*-1))} {ei}'
             else:
                 s5=f'прогнозное отклонение на конец месяца отсутствует'
+            swap={
+                1:0,
+                0:1
+            }
             ssml = f"""
                     <speak>
-                            {items[idx]}
+                            {items[idx]*swap[cur_thread.stopped()]}
                         <break time="{pause_between_rows}ms"/>
-                            {s1}
+                            {s1*swap[cur_thread.stopped()]}
                         <break time="{pause_between_rows}ms"/>
-                            {s2}
+                            {s2*swap[cur_thread.stopped()]}
                         <break time="{pause_between_rows}ms"/>
-                            {s3}
+                            {s3*swap[cur_thread.stopped()]}
                         <break time="{pause_between_rows}ms"/>
-                            {s4}
+                            {s4*swap[cur_thread.stopped()]}
                         <break time="{pause_between_rows}ms"/>
-                            {s5}
+                            {s5*swap[cur_thread.stopped()]}
                         
                     </speak>
                     """

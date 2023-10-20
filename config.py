@@ -35,15 +35,19 @@ df = pd.read_excel('table.xlsx',decimal=',')
 months=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь']
 items=[]
 sootvetstvie={}
-
+dwords = ['пао','оао','ао','ооо']
 for item in pd.array(df['Заказчик']):
     converted = convert_numbers_to_words(item)
     converted = converted.replace('"','')
     converted = converted.replace('-', ' ')
     converted = converted.replace(':', ' ')
     converted=converted.lower()
+    converted = converted.split()
+    words = [x for x in converted if x not in dwords]
+    converted=' '.join(words)
     items.append(converted)
     sootvetstvie[item] = converted
+print(sootvetstvie)
 VA_ALIAS = []
 
 VA_TBR = ('для')
@@ -54,7 +58,8 @@ VA_CMDS = {
     'show2':('отгрузки товаров'),
     'comment':('добавь комментарий'),
     'sendmail':('отправь сообщение'),
-    'stop':('стоп')
+    'stop':('стоп'),
+    'stop2':('отмена')
 }
 
 from openpyxl.utils.dataframe import dataframe_to_rows
