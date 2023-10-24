@@ -47,7 +47,6 @@ for item in pd.array(df['Заказчик']):
     converted=' '.join(words)
     items.append(converted)
     sootvetstvie[item] = converted
-print(sootvetstvie)
 VA_ALIAS = []
 
 VA_TBR = ('для')
